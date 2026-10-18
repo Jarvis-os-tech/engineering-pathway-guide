@@ -77,7 +77,12 @@ function Index() {
 
   const { messages, sendMessage, status, stop, setMessages } = useChat({
     messages: [GREETING],
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
+    transport: new DefaultChatTransport({
+      api:
+        (typeof process !== "undefined" &&
+          (process.env.NEXT_PUBLIC_CHAT_API_URL || process.env.VITE_CHAT_API_URL)) ||
+        "/api/chat",
+    }),
     onError: (e) => {
       const msg = e.message || "";
       setError(
@@ -85,7 +90,7 @@ function Index() {
           ? "Too many requests right now — please wait a moment and try again."
           : msg.includes("402")
             ? "AI credits have run out for this app."
-            : "Something went wrong. Please try again.",
+            : msg || "Something went wrong. Please check your API key configuration.",
       );
     },
   });

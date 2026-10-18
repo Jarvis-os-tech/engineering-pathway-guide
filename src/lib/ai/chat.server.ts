@@ -30,34 +30,120 @@ STAGE: <number 1-6 of the current step>
 OPTIONS: <2-4 short tap-able answers to your question, separated by " | ">`;
 
 export async function handleChat(request: Request) {
-  const geminiKey = process.env["GEMINI_API_KEY"] || process.env["GOOGLE_API_KEY"];
-  const lovableKey = process.env["LOVABLE_API_KEY"];
+  // Read API keys from process.env (supports Gemini, OpenAI, Lovable, and NEXT_PUBLIC_* conventions)
+  const clientKey =
+    request.headers.get("x-api-key") ||
+    request.headers.get("x-gemini-api-key") ||
+    request.headers.get("x-openai-api-key") ||
+    undefined;
 
-  if (!geminiKey && !lovableKey) {
-    return Response.json({ error: "AI is not configured. Please set GEMINI_API_KEY in .env." }, { status: 500 });
+  const geminiKey =
+    clientKey ||
+    process.env["GEMINI_API_KEY"] ||
+    process.env["GOOGLE_API_KEY"] ||
+    process.env["NEXT_PUBLIC_GEMINI_API_KEY"];
+
+  const openAiKey =
+    clientKey ||
+    process.env["OPENAI_API_KEY"] ||
+    process.env["NEXT_PUBLIC_OPENAI_API_KEY"];
+
+  const lovableKey =
+    process.env["LOVABLE_API_KEY"] ||
+    process.env["NEXT_PUBLIC_LOVABLE_API_KEY"];
+
+  const genericKey =
+    clientKey ||
+    process.env["NEXT_PUBLIC_API_KEY"] ||
+    process.env["API_KEY"];
+
+  // Determine provider from explicit env or available keys
+  const requestedProvider = (process.env["AI_PROVIDER"] || "").toLowerCase();
+
+  let resolvedProvider: "gemini" | "openai" | "lovable" | null = null;
+  let resolvedKey = "";
+
+  if (requestedProvider === "gemini" && (geminiKey || genericKey)) {
+    resolvedProvider = "gemini";
+    resolvedKey = (geminiKey || genericKey)!;
+  } else if (requestedProvider === "openai" && (openAiKey || genericKey)) {
+    resolvedProvider = "openai";
+    resolvedKey = (openAiKey || genericKey)!;
+  } else if (requestedProvider === "lovable" && (lovableKey || genericKey)) {
+    resolvedProvider = "lovable";
+    resolvedKey = (lovableKey || genericKey)!;
+  } else if (geminiKey) {
+    resolvedProvider = "gemini";
+    resolvedKey = geminiKey;
+  } else if (openAiKey) {
+    resolvedProvider = "openai";
+    resolvedKey = openAiKey;
+  } else if (lovableKey) {
+    resolvedProvider = "lovable";
+    resolvedKey = lovableKey;
+  } else if (genericKey) {
+    // Detect provider from key format (Gemini keys commonly start with AIzaSy; OpenAI with sk-)
+    if (genericKey.startsWith("AIzaSy")) {
+      resolvedProvider = "gemini";
+      resolvedKey = genericKey;
+    } else {
+      resolvedProvider = "openai";
+      resolvedKey = genericKey;
+    }
+  }
+
+  if (!resolvedProvider || !resolvedKey) {
+    return Response.json(
+      {
+        error:
+          "AI API key is missing. Please add GEMINI_API_KEY, OPENAI_API_KEY, or NEXT_PUBLIC_API_KEY in your Vercel Project Settings (Settings > Environment Variables) or .env file.",
+      },
+      { status: 500 },
+    );
   }
 
   let body: { messages?: UIMessage[] };
   try {
     body = await request.json();
   } catch {
-    return Response.json({ error: "Invalid request" }, { status: 400 });
+    return Response.json({ error: "Invalid request payload" }, { status: 400 });
   }
-  const messages = Array.isArray(body.messages) ? body.messages.slice(-60) : [];
 
-  const config = geminiKey
-    ? {
-        baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
-        apiKey: geminiKey,
-        model: process.env["GEMINI_MODEL"] || "gemini-2.5-flash",
-        isGemini: true,
-      }
-    : {
-        baseURL: "https://ai.gateway.lovable.dev/v1",
-        apiKey: lovableKey!,
-        model: "openai/gpt-6-astra",
-        isGemini: false,
-      };
+  const maxHistory = Number(process.env["CHAT_MAX_MESSAGES"]) || 60;
+  const messages = Array.isArray(body.messages) ? body.messages.slice(-maxHistory) : [];
+
+  let config: {
+    baseURL: string;
+    apiKey: string;
+    model: string;
+    isGemini?: boolean;
+    isOpenAI?: boolean;
+  };
+
+  if (resolvedProvider === "gemini") {
+    config = {
+      baseURL:
+        process.env["GEMINI_BASE_URL"] ||
+        "https://generativelanguage.googleapis.com/v1beta/openai/",
+      apiKey: resolvedKey,
+      model: process.env["GEMINI_MODEL"] || "gemini-2.5-flash",
+      isGemini: true,
+    };
+  } else if (resolvedProvider === "openai") {
+    config = {
+      baseURL: process.env["OPENAI_BASE_URL"] || "https://api.openai.com/v1",
+      apiKey: resolvedKey,
+      model: process.env["OPENAI_MODEL"] || "gpt-4o",
+      isOpenAI: true,
+    };
+  } else {
+    config = {
+      baseURL: process.env["LOVABLE_BASE_URL"] || "https://ai.gateway.lovable.dev/v1",
+      apiKey: resolvedKey,
+      model: process.env["LOVABLE_MODEL"] || "openai/gpt-6-astra",
+      isGemini: false,
+    };
+  }
 
   const call = createResponsesCall(
     request,

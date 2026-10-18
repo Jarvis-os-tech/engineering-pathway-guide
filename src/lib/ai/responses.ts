@@ -9,11 +9,11 @@ import {
 
 export function createResponsesCall(
   request: Request,
-  config: { baseURL: string; apiKey: string; model: string; isGemini?: boolean },
+  config: { baseURL: string; apiKey: string; model: string; isGemini?: boolean; isOpenAI?: boolean },
   messages: ModelMessage[],
   instructions?: string,
 ) {
-  if (config.isGemini) {
+  if (config.isGemini || config.isOpenAI) {
     const provider = createOpenAI({
       baseURL: config.baseURL,
       apiKey: config.apiKey,

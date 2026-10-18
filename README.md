@@ -175,14 +175,32 @@ bun install
 
 ### 3. Configure Environment Variables
 
-Create a `.env` file in the root directory (or configure in your deployment dashboard):
+Copy the example environment file:
 
-```env
-# Required for AI streaming via Lovable AI Gateway
-LOVABLE_API_KEY=your_lovable_api_key_here
+```bash
+cp .env.example .env
 ```
 
-> **Note**: When running within Lovable, `LOVABLE_API_KEY` is automatically provisioned.
+Open `.env` and set your preferred AI API key:
+
+```env
+# Google Gemini (Recommended - get key at https://aistudio.google.com/app/apikey)
+GEMINI_API_KEY=AIzaSy...
+GEMINI_MODEL=gemini-2.5-flash
+
+# OR OpenAI (get key at https://platform.openai.com/api-keys)
+# OPENAI_API_KEY=sk-...
+# OPENAI_MODEL=gpt-4o
+
+# OR Lovable (automatically provisioned when developing inside Lovable editor)
+# LOVABLE_API_KEY=your_lovable_api_key_here
+```
+
+#### 🌐 Deploying on Vercel:
+1. Go to your project dashboard on [Vercel](https://vercel.com) -> **Settings** -> **Environment Variables**.
+2. Add `GEMINI_API_KEY` (or `NEXT_PUBLIC_API_KEY` / `OPENAI_API_KEY`) with your key.
+3. Select **Production**, **Preview**, and **Development**.
+4. Trigger a **Redeploy** (Deployments -> latest deployment -> Redeploy).
 
 ### 4. Start Development Server
 

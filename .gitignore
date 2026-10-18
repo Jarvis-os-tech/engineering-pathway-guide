@@ -23,6 +23,8 @@ dist-ssr
 # Local Agent & Runtime
 .gravitas/
 .genkit/
+voice engine/
+voice_engine
 
 # Editor directories and files
 .vscode/*
