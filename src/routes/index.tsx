@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { useEffect, useRef, useState } from "react";
-import { Mic, MicOff, RotateCcw, Volume2, VolumeX, Square } from "lucide-react";
+import { useEffect, useState } from "react";
+import { RotateCcw } from "lucide-react";
 import {
   Conversation,
   ConversationContent,
@@ -14,12 +14,9 @@ import {
   PromptInputBody,
   PromptInputFooter,
   PromptInputTextarea,
-  PromptInputTools,
-  PromptInputButton,
   PromptInputSubmit,
 } from "@/components/ai-elements/prompt-input";
 import { Loader } from "@/components/ai-elements/loader";
-import { useVoice } from "@/hooks/use-voice";
 import logo from "@/assets/disha-logo.png";
 
 export const Route = createFileRoute("/")({
@@ -29,12 +26,12 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Talk or type with an AI counsellor to choose the right engineering branch and college in India, plan admissions, and manage costs.",
+          "Type with an AI counsellor to choose the right engineering branch and college in India, plan admissions, and manage costs.",
       },
       { property: "og:title", content: "Disha — AI Engineering Counsellor for Families" },
       {
         property: "og:description",
-        content: "Voice + chat guidance on branches, colleges, JEE/CET admissions and costs in India.",
+        content: "Chat guidance on branches, colleges, JEE/CET admissions and costs in India.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -53,12 +50,6 @@ const GREETING: UIMessage = {
     },
   ],
 };
-
-
-const LANGS = [
-  { code: "en-IN", label: "English" },
-  { code: "hi-IN", label: "हिन्दी" },
-];
 
 const STAGES = ["Profile", "Interests", "Branch", "Budget", "Colleges", "Admission plan"];
 
@@ -80,18 +71,9 @@ export function parseReply(raw: string) {
   return { body, stage: stage as number | null, options };
 }
 
-function textOf(m: UIMessage) {
-  return parseReply(m.parts.map((p) => (p.type === "text" ? p.text : "")).join("")).body;
-}
-
 function Index() {
   const [input, setInput] = useState("");
-  const [lang, setLang] = useState("en-IN");
-  const [voiceMode, setVoiceMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const voice = useVoice(lang);
-  const voiceModeRef = useRef(voiceMode);
-  voiceModeRef.current = voiceMode;
 
   const { messages, sendMessage, status, stop, setMessages } = useChat({
     messages: [GREETING],
@@ -105,13 +87,6 @@ function Index() {
             ? "AI credits have run out for this app."
             : "Something went wrong. Please try again.",
       );
-    },
-    onFinish: ({ message }) => {
-      if (voiceModeRef.current) {
-        voice.speak(textOf(message), () => {
-          if (voiceModeRef.current) startListening();
-        });
-      }
     },
   });
 
@@ -132,35 +107,12 @@ function Index() {
     const t = text.trim();
     if (!t || busy) return;
     setError(null);
-    voice.stopSpeaking();
     sendMessage({ text: t });
     setInput("");
   };
 
-  const startListening = () => voice.listen((final) => send(final), (interim) => setInput(interim));
-
-  const toggleMic = () => {
-    if (voice.listening) voice.stopListening();
-    else startListening();
-  };
-
-  const toggleVoiceMode = () => {
-    const next = !voiceMode;
-    setVoiceMode(next);
-    if (next) {
-      const last = messages[messages.length - 1];
-      if (last?.role === "assistant" && !busy) voice.speak(textOf(last), () => startListening());
-      else if (!busy) startListening();
-    } else {
-      voice.stopSpeaking();
-      voice.stopListening();
-    }
-  };
-
   const restart = () => {
     stop();
-    voice.stopSpeaking();
-    voice.stopListening();
     setMessages([GREETING]);
     setError(null);
   };
@@ -178,29 +130,6 @@ function Index() {
             <h1 className="font-display text-xl font-semibold leading-tight text-foreground">Disha</h1>
             <p className="text-xs text-muted-foreground">Engineering admission counsellor for Indian families</p>
           </div>
-          <select
-            aria-label="Voice language"
-            value={lang}
-            onChange={(e) => setLang(e.target.value)}
-            className="rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground"
-          >
-            {LANGS.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.label}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={toggleVoiceMode}
-            disabled={!voice.supported.speak}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
-              voiceMode ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-accent"
-            }`}
-            aria-pressed={voiceMode}
-          >
-            {voiceMode ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
-            <span className="hidden sm:inline">Voice talk</span>
-          </button>
           <button
             onClick={restart}
             title="Start over"
@@ -280,20 +209,6 @@ function Index() {
       </Conversation>
 
       <div className="mx-auto w-full max-w-3xl px-4 pb-4">
-        {(voice.listening || voice.speaking) && (
-          <div className="mb-2 flex items-center justify-center gap-2 text-sm text-primary">
-            <span className="relative flex size-2.5">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex size-2.5 rounded-full bg-primary" />
-            </span>
-            {voice.listening ? "Listening… speak now" : "Disha is speaking"}
-            {voice.speaking && (
-              <button onClick={voice.stopSpeaking} className="ml-2 inline-flex items-center gap-1 underline">
-                <Square className="size-3" /> Stop
-              </button>
-            )}
-          </div>
-        )}
         <PromptInput
           onSubmit={(msg) => {
             if (busy) {
@@ -308,22 +223,11 @@ function Index() {
               autoFocus
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Type or tap the mic to talk with Disha…"
+              placeholder="Ask Disha about branches, colleges, admissions, or fees…"
             />
           </PromptInputBody>
           <PromptInputFooter>
-            <PromptInputTools>
-              <PromptInputButton
-                onClick={toggleMic}
-                disabled={!voice.supported.listen}
-                variant={voice.listening ? "default" : "ghost"}
-                aria-label={voice.listening ? "Stop listening" : "Speak"}
-                title={voice.supported.listen ? "Speak" : "Voice input isn't supported in this browser"}
-              >
-                {voice.listening ? <MicOff className="size-4" /> : <Mic className="size-4" />}
-                <span>{voice.listening ? "Stop" : "Speak"}</span>
-              </PromptInputButton>
-            </PromptInputTools>
+            <div />
             <PromptInputSubmit status={status} disabled={!busy && !input.trim()} />
           </PromptInputFooter>
         </PromptInput>

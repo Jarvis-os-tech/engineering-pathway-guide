@@ -9,10 +9,27 @@ import {
 
 export function createResponsesCall(
   request: Request,
-  config: { baseURL: string; apiKey: string; model: string },
+  config: { baseURL: string; apiKey: string; model: string; isGemini?: boolean },
   messages: ModelMessage[],
   instructions?: string,
 ) {
+  if (config.isGemini) {
+    const provider = createOpenAI({
+      baseURL: config.baseURL,
+      apiKey: config.apiKey,
+    });
+    const result = streamText({
+      model: provider.chat(config.model),
+      ...(instructions ? { system: instructions } : {}),
+      messages,
+      abortSignal: request.signal,
+    });
+    return {
+      result,
+      response: () => result.toUIMessageStreamResponse(),
+    };
+  }
+
   const runIdFetch = createLovableAiGatewayRunIdFetch(getLovableAiGatewayRunId(request));
   const provider = createOpenAI({
     baseURL: `${config.baseURL.replace(/\/+$/, "").replace(/\/v1$/, "")}/v1`,
@@ -23,7 +40,6 @@ export function createResponsesCall(
   const reasoning = config.model !== "openai/chat-latest";
   const result = streamText({
     model: provider.responses(config.model),
-    // AI SDK 6 lacks `instructions`: rename this key to `system` there.
     ...(instructions ? { instructions } : {}),
     messages,
     abortSignal: request.signal,
