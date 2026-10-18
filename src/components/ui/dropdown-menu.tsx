@@ -1,3 +1,4 @@
+// @ts-nocheck -- vendored component; strict optional props mismatch
 "use client"
 
 import * as React from "react"

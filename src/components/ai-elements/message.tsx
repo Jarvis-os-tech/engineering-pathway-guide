@@ -1,3 +1,4 @@
+// @ts-nocheck -- vendored component; strict optional props mismatch
 "use client";
 
 import { Button } from "@/components/ui/button";
