@@ -20,6 +20,10 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Local Agent & Runtime
+.gravitas/
+.genkit/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
