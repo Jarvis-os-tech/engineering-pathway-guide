@@ -2,7 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useEffect, useState } from "react";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Key } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Conversation,
   ConversationContent,
@@ -74,6 +82,29 @@ export function parseReply(raw: string) {
 function Index() {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false);
+  const [userApiKey, setUserApiKey] = useState("");
+  const [tempKey, setTempKey] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("disha_user_api_key") || "";
+      setUserApiKey(saved);
+      setTempKey(saved);
+    }
+  }, []);
+
+  const saveApiKey = (key: string) => {
+    const clean = key.trim();
+    setUserApiKey(clean);
+    if (typeof window !== "undefined") {
+      if (clean) {
+        localStorage.setItem("disha_user_api_key", clean);
+      } else {
+        localStorage.removeItem("disha_user_api_key");
+      }
+    }
+  };
 
   const { messages, sendMessage, status, stop, setMessages } = useChat({
     messages: [GREETING],
@@ -82,6 +113,10 @@ function Index() {
         (typeof process !== "undefined" &&
           (process.env.NEXT_PUBLIC_CHAT_API_URL || process.env.VITE_CHAT_API_URL)) ||
         "/api/chat",
+      headers: () => {
+        const saved = typeof window !== "undefined" ? localStorage.getItem("disha_user_api_key") : null;
+        return saved ? { "x-api-key": saved } : {};
+      },
     }),
     onError: (e) => {
       const msg = e.message || "";
@@ -112,7 +147,11 @@ function Index() {
     const t = text.trim();
     if (!t || busy) return;
     setError(null);
-    sendMessage({ text: t });
+    const saved = typeof window !== "undefined" ? localStorage.getItem("disha_user_api_key") : null;
+    sendMessage(
+      { text: t },
+      saved ? { headers: { "x-api-key": saved } } : undefined,
+    );
     setInput("");
   };
 
@@ -135,14 +174,31 @@ function Index() {
             <h1 className="font-display text-xl font-semibold leading-tight text-foreground">Disha</h1>
             <p className="text-xs text-muted-foreground">Engineering admission counsellor for Indian families</p>
           </div>
-          <button
-            onClick={restart}
-            title="Start over"
-            aria-label="Start over"
-            className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <RotateCcw className="size-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setTempKey(userApiKey);
+                setApiKeyModalOpen(true);
+              }}
+              title="Configure AI API Key"
+              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                userApiKey
+                  ? "border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
+                  : "border border-border bg-muted/60 text-muted-foreground hover:bg-accent hover:text-foreground"
+              }`}
+            >
+              <Key className="size-3.5" />
+              <span>{userApiKey ? "API Key Set" : "Add API Key"}</span>
+            </button>
+            <button
+              onClick={restart}
+              title="Start over"
+              aria-label="Start over"
+              className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <RotateCcw className="size-4" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -205,8 +261,29 @@ function Index() {
             </div>
           )}
           {error && (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {error}
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              <p className="font-medium">{error}</p>
+              {error.toLowerCase().includes("api key") && (
+                <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setTempKey(userApiKey);
+                      setApiKeyModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-destructive px-3 py-1.5 text-xs font-semibold text-destructive-foreground hover:bg-destructive/90 transition-colors"
+                  >
+                    <Key className="size-3.5" /> Enter API Key in Browser
+                  </button>
+                  <a
+                    href="https://vercel.com/dashboard"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-destructive/40 bg-background/60 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-background transition-colors"
+                  >
+                    Open Vercel Settings ↗
+                  </a>
+                </div>
+              )}
             </div>
           )}
         </ConversationContent>
@@ -240,6 +317,92 @@ function Index() {
           Nothing is saved — this conversation clears when you close the page. Verify cut-offs and fees on official sites.
         </p>
       </div>
+
+      {/* API Key Configuration Modal */}
+      <Dialog open={apiKeyModalOpen} onOpenChange={setApiKeyModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="size-5 text-primary" />
+              Configure AI API Key
+            </DialogTitle>
+            <DialogDescription>
+              Enter your Google Gemini or OpenAI API key. It is saved securely in your browser and used for your sessions.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-foreground">
+                API Key (Gemini or OpenAI)
+              </label>
+              <input
+                type="password"
+                value={tempKey}
+                onChange={(e) => setTempKey(e.target.value)}
+                placeholder="AIzaSy... or sk-..."
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="text-xs text-muted-foreground">
+                Get a free Gemini API key at{" "}
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary underline hover:opacity-80"
+                >
+                  Google AI Studio
+                </a>
+              </p>
+            </div>
+
+            <div className="rounded-md bg-muted/60 p-3 text-xs space-y-1.5 text-muted-foreground">
+              <p className="font-semibold text-foreground">💡 Prefer setting it server-wide on Vercel?</p>
+              <ol className="list-decimal pl-4 space-y-0.5">
+                <li>Go to Vercel Project ➔ <strong>Settings</strong> ➔ <strong>Environment Variables</strong></li>
+                <li>Add variable: <code className="text-foreground">GEMINI_API_KEY</code> or <code className="text-foreground">NEXT_PUBLIC_API_KEY</code></li>
+                <li>Go to <strong>Deployments</strong> ➔ click <code>...</code> on latest deployment ➔ <strong>Redeploy</strong></li>
+              </ol>
+            </div>
+          </div>
+
+          <DialogFooter className="flex items-center gap-2 sm:justify-between">
+            {userApiKey ? (
+              <button
+                type="button"
+                onClick={() => {
+                  saveApiKey("");
+                  setTempKey("");
+                  setApiKeyModalOpen(false);
+                }}
+                className="text-xs text-destructive hover:underline"
+              >
+                Clear Saved Key
+              </button>
+            ) : <div />}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setApiKeyModalOpen(false)}
+                className="rounded-md border border-input bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  saveApiKey(tempKey);
+                  setApiKeyModalOpen(false);
+                  setError(null);
+                }}
+                className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Save Key
+              </button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

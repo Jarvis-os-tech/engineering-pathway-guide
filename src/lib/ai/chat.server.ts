@@ -30,11 +30,19 @@ STAGE: <number 1-6 of the current step>
 OPTIONS: <2-4 short tap-able answers to your question, separated by " | ">`;
 
 export async function handleChat(request: Request) {
-  // Read API keys from process.env (supports Gemini, OpenAI, Lovable, and NEXT_PUBLIC_* conventions)
+  let body: { messages?: UIMessage[]; apiKey?: string } = {};
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "Invalid request payload" }, { status: 400 });
+  }
+
+  // Read API keys from headers, body, or process.env (supports Gemini, OpenAI, Lovable, and NEXT_PUBLIC_* conventions)
   const clientKey =
     request.headers.get("x-api-key") ||
     request.headers.get("x-gemini-api-key") ||
     request.headers.get("x-openai-api-key") ||
+    body.apiKey ||
     undefined;
 
   const geminiKey =
@@ -96,17 +104,10 @@ export async function handleChat(request: Request) {
     return Response.json(
       {
         error:
-          "AI API key is missing. Please add GEMINI_API_KEY, OPENAI_API_KEY, or NEXT_PUBLIC_API_KEY in your Vercel Project Settings (Settings > Environment Variables) or .env file.",
+          "AI API key is missing. Please add GEMINI_API_KEY, OPENAI_API_KEY, or NEXT_PUBLIC_API_KEY in your Vercel Project Settings (Settings > Environment Variables) or configure your key in the app header.",
       },
       { status: 500 },
     );
-  }
-
-  let body: { messages?: UIMessage[] };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "Invalid request payload" }, { status: 400 });
   }
 
   const maxHistory = Number(process.env["CHAT_MAX_MESSAGES"]) || 60;
