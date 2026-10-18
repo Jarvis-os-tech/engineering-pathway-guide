@@ -54,12 +54,6 @@ const GREETING: UIMessage = {
   ],
 };
 
-const STARTERS = [
-  "CSE or ECE — which is better for my child?",
-  "Expected JEE Main percentile 92, which NITs are possible?",
-  "Our budget is ₹3 lakh per year. What are our options?",
-  "How do education loans and scholarships work?",
-];
 
 const LANGS = [
   { code: "en-IN", label: "English" },
@@ -263,7 +257,7 @@ function Index() {
               <Loader /> Disha is thinking…
             </div>
           )}
-          {!busy && messages.length > 1 && lastParsed && lastParsed.options.length > 0 && (
+          {!busy && lastParsed && lastParsed.options.length > 0 && (
             <div className="flex flex-wrap gap-2" aria-label="Suggested answers">
               {lastParsed.options.map((o) => (
                 <button
@@ -272,19 +266,6 @@ function Index() {
                   className="rounded-full border border-primary/40 bg-card px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
                 >
                   {o}
-                </button>
-              ))}
-            </div>
-          )}
-          {messages.length === 1 && (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {STARTERS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => send(s)}
-                  className="rounded-xl border border-border bg-card px-3 py-2.5 text-left text-sm text-card-foreground transition-colors hover:border-primary hover:bg-accent"
-                >
-                  {s}
                 </button>
               ))}
             </div>
