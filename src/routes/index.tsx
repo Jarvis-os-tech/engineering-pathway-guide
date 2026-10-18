@@ -49,7 +49,7 @@ const GREETING: UIMessage = {
   parts: [
     {
       type: "text",
-      text: "Namaste! I'm **Disha**, your family's engineering admission guide. 🙏\n\nI'll help you choose the right **branch and college**, understand **admissions** (JEE, JoSAA, state CETs) and plan **costs, scholarships and loans**.\n\nTo begin — who is with me today, and which class is the student in (or what is their expected JEE rank / board percentage)?",
+      text: "Namaste! I'm **Disha**, your family's engineering admission guide. 🙏\n\nI'll help you choose the right **branch and college**, understand **admissions** (JEE, JoSAA, state CETs) and plan **costs, scholarships and loans**.\n\nTo begin — who is with me today, and which class is the student in (or what is their expected JEE rank / board percentage)?\nSTAGE: 1\nOPTIONS: Parent and student together | Class 12, JEE coming up | Class 12 results are out | Just exploring options",
     },
   ],
 };
