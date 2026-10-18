@@ -212,25 +212,10 @@ function Index() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                setTempKey(userApiKey);
-                setApiKeyModalOpen(true);
-              }}
-              title="Configure AI API Key"
-              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-                userApiKey
-                  ? "border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
-                  : "border border-border bg-muted/60 text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
-            >
-              <Key className="size-3.5" />
-              <span>{userApiKey ? "API Key Set" : "Add API Key"}</span>
-            </button>
-            <button
               onClick={restart}
               title="Start over"
               aria-label="Start over"
-              className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
             >
               <RotateCcw className="size-4" />
             </button>
