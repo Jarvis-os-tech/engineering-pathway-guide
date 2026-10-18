@@ -29,6 +29,105 @@ FORMAT RULE (mandatory): end EVERY reply with exactly these two lines on their o
 STAGE: <number 1-6 of the current step>
 OPTIONS: <2-4 short tap-able answers to your question, separated by " | ">`;
 
+export interface AiResolvedConfig {
+  provider: "gemini" | "openai" | "lovable";
+  baseURL: string;
+  apiKey: string;
+  model: string;
+  isGemini?: boolean;
+  isOpenAI?: boolean;
+}
+
+export function resolveAiConfig(options: {
+  clientKey?: string;
+  env?: Record<string, string | undefined>;
+} = {}): AiResolvedConfig | null {
+  const env = options.env || process.env;
+  const clientKey = options.clientKey;
+
+  // Public API key = Google Gemini API key
+  const geminiKey =
+    clientKey ||
+    env["NEXT_PUBLIC_API_KEY"] ||
+    env["NEXT_PUBLIC_GEMINI_API_KEY"] ||
+    env["GEMINI_API_KEY"] ||
+    env["GOOGLE_API_KEY"] ||
+    env["API_KEY"];
+
+  const openAiKey =
+    clientKey ||
+    env["OPENAI_API_KEY"] ||
+    env["NEXT_PUBLIC_OPENAI_API_KEY"];
+
+  const lovableKey =
+    env["LOVABLE_API_KEY"] ||
+    env["NEXT_PUBLIC_LOVABLE_API_KEY"];
+
+  const genericKey =
+    clientKey ||
+    env["NEXT_PUBLIC_API_KEY"] ||
+    env["API_KEY"];
+
+  // Determine provider from explicit env or available keys
+  const requestedProvider = (env["AI_PROVIDER"] || "").toLowerCase();
+
+  let resolvedProvider: "gemini" | "openai" | "lovable" | null = null;
+  let resolvedKey = "";
+
+  if (requestedProvider === "openai" && (openAiKey || genericKey)) {
+    resolvedProvider = "openai";
+    resolvedKey = (openAiKey || genericKey)!;
+  } else if (requestedProvider === "lovable" && (lovableKey || genericKey)) {
+    resolvedProvider = "lovable";
+    resolvedKey = (lovableKey || genericKey)!;
+  } else if (geminiKey) {
+    // Default provider: Google Gemini (matches NEXT_PUBLIC_API_KEY = Gemini API key)
+    resolvedProvider = "gemini";
+    resolvedKey = geminiKey;
+  } else if (openAiKey) {
+    resolvedProvider = "openai";
+    resolvedKey = openAiKey;
+  } else if (lovableKey) {
+    resolvedProvider = "lovable";
+    resolvedKey = lovableKey;
+  } else if (genericKey) {
+    resolvedProvider = "gemini";
+    resolvedKey = genericKey;
+  }
+
+  if (!resolvedProvider || !resolvedKey) {
+    return null;
+  }
+
+  if (resolvedProvider === "gemini") {
+    return {
+      provider: "gemini",
+      baseURL:
+        env["GEMINI_BASE_URL"] ||
+        "https://generativelanguage.googleapis.com/v1beta/openai/",
+      apiKey: resolvedKey,
+      model: env["GEMINI_MODEL"] || "gemini-2.5-flash",
+      isGemini: true,
+    };
+  } else if (resolvedProvider === "openai") {
+    return {
+      provider: "openai",
+      baseURL: env["OPENAI_BASE_URL"] || "https://api.openai.com/v1",
+      apiKey: resolvedKey,
+      model: env["OPENAI_MODEL"] || "gpt-4o",
+      isOpenAI: true,
+    };
+  } else {
+    return {
+      provider: "lovable",
+      baseURL: env["LOVABLE_BASE_URL"] || "https://ai.gateway.lovable.dev/v1",
+      apiKey: resolvedKey,
+      model: env["LOVABLE_MODEL"] || "openai/gpt-6-astra",
+      isGemini: false,
+    };
+  }
+}
+
 export async function handleChat(request: Request) {
   let body: { messages?: UIMessage[]; apiKey?: string } = {};
   try {
@@ -45,66 +144,13 @@ export async function handleChat(request: Request) {
     body.apiKey ||
     undefined;
 
-  const geminiKey =
-    clientKey ||
-    process.env["GEMINI_API_KEY"] ||
-    process.env["GOOGLE_API_KEY"] ||
-    process.env["NEXT_PUBLIC_GEMINI_API_KEY"];
+  const config = resolveAiConfig({ clientKey });
 
-  const openAiKey =
-    clientKey ||
-    process.env["OPENAI_API_KEY"] ||
-    process.env["NEXT_PUBLIC_OPENAI_API_KEY"];
-
-  const lovableKey =
-    process.env["LOVABLE_API_KEY"] ||
-    process.env["NEXT_PUBLIC_LOVABLE_API_KEY"];
-
-  const genericKey =
-    clientKey ||
-    process.env["NEXT_PUBLIC_API_KEY"] ||
-    process.env["API_KEY"];
-
-  // Determine provider from explicit env or available keys
-  const requestedProvider = (process.env["AI_PROVIDER"] || "").toLowerCase();
-
-  let resolvedProvider: "gemini" | "openai" | "lovable" | null = null;
-  let resolvedKey = "";
-
-  if (requestedProvider === "gemini" && (geminiKey || genericKey)) {
-    resolvedProvider = "gemini";
-    resolvedKey = (geminiKey || genericKey)!;
-  } else if (requestedProvider === "openai" && (openAiKey || genericKey)) {
-    resolvedProvider = "openai";
-    resolvedKey = (openAiKey || genericKey)!;
-  } else if (requestedProvider === "lovable" && (lovableKey || genericKey)) {
-    resolvedProvider = "lovable";
-    resolvedKey = (lovableKey || genericKey)!;
-  } else if (geminiKey) {
-    resolvedProvider = "gemini";
-    resolvedKey = geminiKey;
-  } else if (openAiKey) {
-    resolvedProvider = "openai";
-    resolvedKey = openAiKey;
-  } else if (lovableKey) {
-    resolvedProvider = "lovable";
-    resolvedKey = lovableKey;
-  } else if (genericKey) {
-    // Detect provider from key format (Gemini keys commonly start with AIzaSy; OpenAI with sk-)
-    if (genericKey.startsWith("AIzaSy")) {
-      resolvedProvider = "gemini";
-      resolvedKey = genericKey;
-    } else {
-      resolvedProvider = "openai";
-      resolvedKey = genericKey;
-    }
-  }
-
-  if (!resolvedProvider || !resolvedKey) {
+  if (!config) {
     return Response.json(
       {
         error:
-          "AI API key is missing. Please add GEMINI_API_KEY, OPENAI_API_KEY, or NEXT_PUBLIC_API_KEY in your Vercel Project Settings (Settings > Environment Variables) or configure your key in the app header.",
+          "AI API key is missing. Please add NEXT_PUBLIC_API_KEY (your Google Gemini API key) or GEMINI_API_KEY in your Vercel Project Settings (Settings > Environment Variables) or configure your key via the key icon in the app header.",
       },
       { status: 500 },
     );
@@ -112,39 +158,6 @@ export async function handleChat(request: Request) {
 
   const maxHistory = Number(process.env["CHAT_MAX_MESSAGES"]) || 60;
   const messages = Array.isArray(body.messages) ? body.messages.slice(-maxHistory) : [];
-
-  let config: {
-    baseURL: string;
-    apiKey: string;
-    model: string;
-    isGemini?: boolean;
-    isOpenAI?: boolean;
-  };
-
-  if (resolvedProvider === "gemini") {
-    config = {
-      baseURL:
-        process.env["GEMINI_BASE_URL"] ||
-        "https://generativelanguage.googleapis.com/v1beta/openai/",
-      apiKey: resolvedKey,
-      model: process.env["GEMINI_MODEL"] || "gemini-2.5-flash",
-      isGemini: true,
-    };
-  } else if (resolvedProvider === "openai") {
-    config = {
-      baseURL: process.env["OPENAI_BASE_URL"] || "https://api.openai.com/v1",
-      apiKey: resolvedKey,
-      model: process.env["OPENAI_MODEL"] || "gpt-4o",
-      isOpenAI: true,
-    };
-  } else {
-    config = {
-      baseURL: process.env["LOVABLE_BASE_URL"] || "https://ai.gateway.lovable.dev/v1",
-      apiKey: resolvedKey,
-      model: process.env["LOVABLE_MODEL"] || "openai/gpt-6-astra",
-      isGemini: false,
-    };
-  }
 
   const call = createResponsesCall(
     request,

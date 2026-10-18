@@ -12,4 +12,25 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    envPrefix: ["VITE_", "NEXT_PUBLIC_"],
+    define: {
+      "process.env.NEXT_PUBLIC_API_KEY": JSON.stringify(
+        process.env.NEXT_PUBLIC_API_KEY ||
+          process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+          process.env.GEMINI_API_KEY ||
+          "",
+      ),
+      "process.env.NEXT_PUBLIC_GEMINI_API_KEY": JSON.stringify(
+        process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+          process.env.NEXT_PUBLIC_API_KEY ||
+          process.env.GEMINI_API_KEY ||
+          "",
+      ),
+      "process.env.NEXT_PUBLIC_CHAT_API_URL": JSON.stringify(
+        process.env.NEXT_PUBLIC_CHAT_API_URL || "/api/chat",
+      ),
+    },
+  },
 });
+

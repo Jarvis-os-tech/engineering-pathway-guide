@@ -86,9 +86,23 @@ function Index() {
   const [userApiKey, setUserApiKey] = useState("");
   const [tempKey, setTempKey] = useState("");
 
+  const getPublicApiKey = () => {
+    if (typeof process !== "undefined" && process.env) {
+      return (
+        process.env.NEXT_PUBLIC_API_KEY ||
+        process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+        process.env.VITE_API_KEY ||
+        process.env.VITE_GEMINI_API_KEY ||
+        ""
+      );
+    }
+    return "";
+  };
+
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("disha_user_api_key") || "";
+      const publicEnvKey = getPublicApiKey();
+      const saved = localStorage.getItem("disha_user_api_key") || publicEnvKey || "";
       setUserApiKey(saved);
       setTempKey(saved);
     }
@@ -114,7 +128,11 @@ function Index() {
           (process.env.NEXT_PUBLIC_CHAT_API_URL || process.env.VITE_CHAT_API_URL)) ||
         "/api/chat",
       headers: () => {
-        const saved = typeof window !== "undefined" ? localStorage.getItem("disha_user_api_key") : null;
+        const publicEnvKey = getPublicApiKey();
+        const saved =
+          typeof window !== "undefined"
+            ? localStorage.getItem("disha_user_api_key") || publicEnvKey
+            : publicEnvKey;
         return saved ? { "x-api-key": saved } : {};
       },
     }),
@@ -147,7 +165,11 @@ function Index() {
     const t = text.trim();
     if (!t || busy) return;
     setError(null);
-    const saved = typeof window !== "undefined" ? localStorage.getItem("disha_user_api_key") : null;
+    const publicEnvKey = getPublicApiKey();
+    const saved =
+      typeof window !== "undefined"
+        ? localStorage.getItem("disha_user_api_key") || publicEnvKey
+        : publicEnvKey;
     sendMessage(
       { text: t },
       saved ? { headers: { "x-api-key": saved } } : undefined,
@@ -324,23 +346,23 @@ function Index() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Key className="size-5 text-primary" />
-              Configure AI API Key
+              Configure Google Gemini API Key
             </DialogTitle>
             <DialogDescription>
-              Enter your Google Gemini or OpenAI API key. It is saved securely in your browser and used for your sessions.
+              Enter your Google Gemini API key (or OpenAI key). Public API key = Google Gemini API key (NEXT_PUBLIC_API_KEY).
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <label className="text-xs font-medium text-foreground">
-                API Key (Gemini or OpenAI)
+                Google Gemini API Key (NEXT_PUBLIC_API_KEY)
               </label>
               <input
                 type="password"
                 value={tempKey}
                 onChange={(e) => setTempKey(e.target.value)}
-                placeholder="AIzaSy... or sk-..."
+                placeholder="AIzaSy... (Gemini) or sk-... (OpenAI)"
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <p className="text-xs text-muted-foreground">
@@ -360,7 +382,7 @@ function Index() {
               <p className="font-semibold text-foreground">💡 Prefer setting it server-wide on Vercel?</p>
               <ol className="list-decimal pl-4 space-y-0.5">
                 <li>Go to Vercel Project ➔ <strong>Settings</strong> ➔ <strong>Environment Variables</strong></li>
-                <li>Add variable: <code className="text-foreground">GEMINI_API_KEY</code> or <code className="text-foreground">NEXT_PUBLIC_API_KEY</code></li>
+                <li>Add variable: <code className="text-foreground">NEXT_PUBLIC_API_KEY</code> with your Gemini key</li>
                 <li>Go to <strong>Deployments</strong> ➔ click <code>...</code> on latest deployment ➔ <strong>Redeploy</strong></li>
               </ol>
             </div>
