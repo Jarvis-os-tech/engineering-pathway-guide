@@ -13,21 +13,31 @@ describe("resolveAiConfig", () => {
     expect(config?.provider).toBe("gemini");
     expect(config?.apiKey).toBe("test-gemini-key-123");
     expect(config?.isGemini).toBe(true);
-    expect(config?.model).toBe("gemini-2.5-flash");
+    expect(config?.model).toBe("gemini-2.0-flash");
     expect(config?.baseURL).toBe(
       "https://generativelanguage.googleapis.com/v1beta/openai/",
     );
+  });
+
+  it("strips quotes and whitespace from API keys", () => {
+    const config = resolveAiConfig({
+      env: {
+        NEXT_PUBLIC_API_KEY: '  "AIzaSyCleanedKey"  ',
+      },
+    });
+
+    expect(config?.apiKey).toBe("AIzaSyCleanedKey");
   });
 
   it("respects GEMINI_MODEL override", () => {
     const config = resolveAiConfig({
       env: {
         NEXT_PUBLIC_API_KEY: "test-gemini-key-123",
-        GEMINI_MODEL: "gemini-2.0-flash",
+        GEMINI_MODEL: "gemini-2.5-flash",
       },
     });
 
-    expect(config?.model).toBe("gemini-2.0-flash");
+    expect(config?.model).toBe("gemini-2.5-flash");
   });
 
   it("resolves dedicated GEMINI_API_KEY and NEXT_PUBLIC_GEMINI_API_KEY", () => {

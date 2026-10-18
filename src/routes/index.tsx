@@ -138,13 +138,27 @@ function Index() {
     }),
     onError: (e) => {
       const msg = e.message || "";
-      setError(
-        msg.includes("429")
-          ? "Too many requests right now — please wait a moment and try again."
-          : msg.includes("402")
-            ? "AI credits have run out for this app."
-            : msg || "Something went wrong. Please check your API key configuration.",
-      );
+      if (
+        msg.includes("429") ||
+        msg.toLowerCase().includes("quota") ||
+        msg.toLowerCase().includes("resource_exhausted")
+      ) {
+        setError("Gemini rate limit or quota exceeded. Please wait a moment or enter another API key.");
+      } else if (msg.includes("402")) {
+        setError("AI credits have run out for this app.");
+      } else if (
+        msg.toLowerCase().includes("valid api key") ||
+        msg.toLowerCase().includes("invalid api key")
+      ) {
+        setError("Invalid Google Gemini API key. Please click below to configure a valid key.");
+      } else if (
+        msg === "An error occurred." ||
+        msg.toLowerCase().includes("error occurred")
+      ) {
+        setError("Could not connect to Gemini API. Please click below to configure or re-enter your API key.");
+      } else {
+        setError(msg || "Something went wrong. Please check your API key configuration.");
+      }
     },
   });
 
@@ -285,27 +299,34 @@ function Index() {
           {error && (
             <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
               <p className="font-medium">{error}</p>
-              {error.toLowerCase().includes("api key") && (
-                <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setTempKey(userApiKey);
-                      setApiKeyModalOpen(true);
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-destructive px-3 py-1.5 text-xs font-semibold text-destructive-foreground hover:bg-destructive/90 transition-colors"
-                  >
-                    <Key className="size-3.5" /> Enter API Key in Browser
-                  </button>
-                  <a
-                    href="https://vercel.com/dashboard"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-md border border-destructive/40 bg-background/60 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-background transition-colors"
-                  >
-                    Open Vercel Settings ↗
-                  </a>
-                </div>
-              )}
+              <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTempKey(userApiKey);
+                    setApiKeyModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-destructive px-3 py-1.5 text-xs font-semibold text-destructive-foreground hover:bg-destructive/90 transition-colors"
+                >
+                  <Key className="size-3.5" /> Configure Gemini API Key
+                </button>
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-destructive/40 bg-background/60 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-background transition-colors"
+                >
+                  Get Free Gemini Key ↗
+                </a>
+                <a
+                  href="https://vercel.com/dashboard"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-destructive/40 bg-background/60 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-background transition-colors"
+                >
+                  Open Vercel Settings ↗
+                </a>
+              </div>
             </div>
           )}
         </ConversationContent>

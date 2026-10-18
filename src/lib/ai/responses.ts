@@ -26,7 +26,28 @@ export function createResponsesCall(
     });
     return {
       result,
-      response: () => result.toUIMessageStreamResponse(),
+      response: () =>
+        result.toUIMessageStreamResponse({
+          onError: (err) => {
+            const raw = err instanceof Error ? err.message : String(err);
+            console.error("AI Generation Error:", raw);
+            if (
+              raw.includes("400") ||
+              raw.includes("Please pass a valid API key") ||
+              raw.includes("API key not valid") ||
+              raw.includes("INVALID_ARGUMENT")
+            ) {
+              return "Invalid API key. Please check your Google Gemini API key via the 'Add API Key' button in the header.";
+            }
+            if (raw.includes("404") || raw.includes("not found")) {
+              return `AI model '${config.model}' is not accessible with this API key. Try switching to gemini-2.0-flash or gemini-1.5-flash.`;
+            }
+            if (raw.includes("429") || raw.includes("RESOURCE_EXHAUSTED") || raw.includes("quota")) {
+              return "Gemini API rate limit or quota exceeded. Please wait a moment or try again later.";
+            }
+            return raw || "An error occurred during AI generation.";
+          },
+        }),
     };
   }
 

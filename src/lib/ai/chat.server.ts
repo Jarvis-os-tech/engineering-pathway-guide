@@ -99,21 +99,23 @@ export function resolveAiConfig(options: {
     return null;
   }
 
+  const cleanKey = resolvedKey.trim().replace(/^["']|["']$/g, "").trim();
+
   if (resolvedProvider === "gemini") {
     return {
       provider: "gemini",
       baseURL:
         env["GEMINI_BASE_URL"] ||
         "https://generativelanguage.googleapis.com/v1beta/openai/",
-      apiKey: resolvedKey,
-      model: env["GEMINI_MODEL"] || "gemini-2.5-flash",
+      apiKey: cleanKey,
+      model: env["GEMINI_MODEL"] || "gemini-2.0-flash",
       isGemini: true,
     };
   } else if (resolvedProvider === "openai") {
     return {
       provider: "openai",
       baseURL: env["OPENAI_BASE_URL"] || "https://api.openai.com/v1",
-      apiKey: resolvedKey,
+      apiKey: cleanKey,
       model: env["OPENAI_MODEL"] || "gpt-4o",
       isOpenAI: true,
     };
@@ -121,7 +123,7 @@ export function resolveAiConfig(options: {
     return {
       provider: "lovable",
       baseURL: env["LOVABLE_BASE_URL"] || "https://ai.gateway.lovable.dev/v1",
-      apiKey: resolvedKey,
+      apiKey: cleanKey,
       model: env["LOVABLE_MODEL"] || "openai/gpt-6-astra",
       isGemini: false,
     };
