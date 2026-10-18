@@ -17,7 +17,7 @@ How you behave:
 - Cut-offs and fees change every year: give realistic ranges and remind them to verify on official sites (josaa.nic.in, college sites) for current numbers.`;
 
 export async function handleChat(request: Request) {
-  const apiKey = process.env.LOVABLE_API_KEY;
+  const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) return Response.json({ error: "AI is not configured." }, { status: 500 });
 
   let body: { messages?: UIMessage[] };
