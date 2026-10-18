@@ -78,7 +78,7 @@ export function parseReply(raw: string) {
       const st = line.match(/^\s*\**STAGE:?\**\s*(\d)/i);
       if (st) { stage = Number(st[1]); return false; }
       const op = line.match(/^\s*\**OPTIONS:?\**\s*(.*)$/i);
-      if (op) { options = op[1].split("|").map((o) => o.trim()).filter(Boolean).slice(0, 4); return false; }
+      if (op) { options = (op[1] ?? "").split("|").map((o) => o.trim()).filter(Boolean).slice(0, 4); return false; }
       return true;
     })
     .join("\n")
