@@ -49,25 +49,39 @@ const GREETING: UIMessage = {
   parts: [
     {
       type: "text",
-      text: "Namaste! I'm **Disha**, your family's engineering admission guide. 🙏\n\nI'll help you choose the right **branch and college**, understand **admissions** (JEE, JoSAA, state CETs) and plan **costs, scholarships and loans**.\n\nTo begin — who is with me today, and which class is the student in (or what is their expected JEE rank / board percentage)?",
+      text: "Namaste! I'm **Disha**, your family's engineering admission guide. 🙏\n\nI'll help you choose the right **branch and college**, understand **admissions** (JEE, JoSAA, state CETs) and plan **costs, scholarships and loans**.\n\nTo begin — who is with me today, and which class is the student in (or what is their expected JEE rank / board percentage)?\nSTAGE: 1\nOPTIONS: Parent and student together | Class 12, JEE coming up | Class 12 results are out | Just exploring options",
     },
   ],
 };
 
-const STARTERS = [
-  "CSE or ECE — which is better for my child?",
-  "Expected JEE Main percentile 92, which NITs are possible?",
-  "Our budget is ₹3 lakh per year. What are our options?",
-  "How do education loans and scholarships work?",
-];
 
 const LANGS = [
   { code: "en-IN", label: "English" },
   { code: "hi-IN", label: "हिन्दी" },
 ];
 
+const STAGES = ["Profile", "Interests", "Branch", "Budget", "Colleges", "Admission plan"];
+
+// Splits the assistant's trailing "STAGE:" / "OPTIONS:" lines from the visible answer.
+export function parseReply(raw: string) {
+  let stage: number | null = null;
+  let options: string[] = [];
+  const body = raw
+    .split("\n")
+    .filter((line) => {
+      const st = line.match(/^\s*\**STAGE:?\**\s*(\d)/i);
+      if (st) { stage = Number(st[1]); return false; }
+      const op = line.match(/^\s*\**OPTIONS:?\**\s*(.*)$/i);
+      if (op) { options = (op[1] ?? "").split("|").map((o) => o.trim()).filter(Boolean).slice(0, 4); return false; }
+      return true;
+    })
+    .join("\n")
+    .trimEnd();
+  return { body, stage: stage as number | null, options };
+}
+
 function textOf(m: UIMessage) {
-  return m.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
+  return parseReply(m.parts.map((p) => (p.type === "text" ? p.text : "")).join("")).body;
 }
 
 function Index() {
@@ -100,6 +114,17 @@ function Index() {
       }
     },
   });
+
+  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+  const lastParsed = lastAssistant
+    ? parseReply(lastAssistant.parts.map((p) => (p.type === "text" ? p.text : "")).join(""))
+    : null;
+  const stage =
+    messages.reduce<number>((acc, m) => {
+      if (m.role !== "assistant") return acc;
+      const st = parseReply(m.parts.map((p) => (p.type === "text" ? p.text : "")).join("")).stage;
+      return st ?? acc;
+    }, 1);
 
   const busy = status === "submitted" || status === "streaming";
 
@@ -187,6 +212,29 @@ function Index() {
         </div>
       </header>
 
+      <nav aria-label="Decision progress" className="border-b border-border bg-muted/60">
+        <ol className="mx-auto flex max-w-3xl gap-1 overflow-x-auto px-4 py-2 text-xs">
+          {STAGES.map((name, i) => {
+            const n = i + 1;
+            const state = n < stage ? "done" : n === stage ? "now" : "next";
+            return (
+              <li
+                key={name}
+                className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 ${
+                  state === "now"
+                    ? "bg-primary text-primary-foreground"
+                    : state === "done"
+                      ? "bg-secondary text-secondary-foreground"
+                      : "text-muted-foreground"
+                }`}
+              >
+                <span className="font-semibold">{state === "done" ? "✓" : n}</span> {name}
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
+
       <Conversation className="flex-1">
         <ConversationContent className="mx-auto w-full max-w-3xl px-4">
           {messages.map((m) => (
@@ -195,7 +243,7 @@ function Index() {
                 {m.parts.map((p, i) =>
                   p.type === "text" ? (
                     m.role === "assistant" ? (
-                      <MessageResponse key={i}>{p.text}</MessageResponse>
+                      <MessageResponse key={i}>{parseReply(p.text).body}</MessageResponse>
                     ) : (
                       <span key={i}>{p.text}</span>
                     )
@@ -209,15 +257,15 @@ function Index() {
               <Loader /> Disha is thinking…
             </div>
           )}
-          {messages.length === 1 && (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {STARTERS.map((s) => (
+          {!busy && lastParsed && lastParsed.options.length > 0 && (
+            <div className="flex flex-wrap gap-2" aria-label="Suggested answers">
+              {lastParsed.options.map((o) => (
                 <button
-                  key={s}
-                  onClick={() => send(s)}
-                  className="rounded-xl border border-border bg-card px-3 py-2.5 text-left text-sm text-card-foreground transition-colors hover:border-primary hover:bg-accent"
+                  key={o}
+                  onClick={() => send(o)}
+                  className="rounded-full border border-primary/40 bg-card px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
                 >
-                  {s}
+                  {o}
                 </button>
               ))}
             </div>
